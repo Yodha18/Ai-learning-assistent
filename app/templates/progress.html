@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block title %}Progress - Lumina Academic{% endblock %}
+
+{% block content %}
+<header class="fixed top-0 w-full z-50 bg-surface/80 backdrop-blur-md shadow-sm">
+    <div class="flex items-center justify-between px-6 py-4 max-w-7xl mx-auto h-[64px]">
+        <a href="/dashboard" class="flex items-center justify-center w-10 h-10 rounded-full hover:bg-surface-variant/50 transition-colors">
+            <span class="material-symbols-outlined">arrow_back</span>
+        </a>
+        <h1 class="font-display text-xl font-bold text-primary">Progress</h1>
+        <div class="w-10"></div>
+    </div>
+</header>
+
+<main class="max-w-7xl mx-auto px-4 pt-24 pb-16">
+    <!-- Overall Progress -->
+    <div class="bg-white rounded-xl shadow-sm border border-surface-variant p-6 mb-6">
+        <h2 class="font-display text-lg font-semibold text-on-surface mb-4">Overall Progress</h2>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="text-center">
+                <div class="text-3xl font-bold text-primary">{{ progress.overall_progress }}%</div>
+                <div class="text-sm text-on-surface-variant">Overall</div>
+            </div>
+            <div class="text-center">
+                <div class="text-3xl font-bold text-secondary">{{ progress.study_streak }}</div>
+                <div class="text-sm text-on-surface-variant">Day Streak</div>
+            </div>
+            <div class="text-center">
+                <div class="text-3xl font-bold text-tertiary">{{ progress.quiz_accuracy }}%</div>
+                <div class="text-sm text-on-surface-variant">Quiz Accuracy</div>
+            </div>
+            <div class="text-center">
+                <div class="text-3xl font-bold text-on-surface">{{ progress.total_study_time }}</div>
+                <div class="text-sm text-on-surface-variant">Minutes Studied</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Subject Progress -->
+    <div class="bg-white rounded-xl shadow-sm border border-surface-variant p-6 mb-6">
+        <h2 class="font-display text-lg font-semibold text-on-surface mb-4">Subject Progress</h2>
+        <div id="subjects-progress" class="space-y-4">
+            <!-- Will be loaded via JS -->
+        </div>
+    </div>
+
+    <!-- Weak Topics -->
+    <div class="bg-white rounded-xl shadow-sm border border-surface-variant p-6">
+        <h2 class="font-display text-lg font-semibold text-on-surface mb-4">Topics to Improve</h2>
+        <div id="weak-topics" class="space-y-3">
+            <!-- Will be loaded via JS -->
+        </div>
+    </div>
+</main>
+
+<script>
+async function loadProgress() {
+    try {
+        const [overallResponse, subjectsResponse, weakTopicsResponse] = await Promise.all([
+            fetch('/api/progress/overall'),
+            fetch('/api/progress/subjects'),
+            fetch('/api/progress/weak-topics')
+        ]);
+        
+        const overall = await overallResponse.json();
+        const subjects = await subjectsResponse.json();
+        const weakTopics = await weakTopicsResponse.json();
+        
+        // Update overall progress
+        document.querySelector('.text-3xl.font-bold.text-primary').textContent = `${overall.overall_progress}%`;
+        document.querySelector('.text-3xl.font-bold.text-secondary').textContent = overall.study_streak;
+        document.querySelector('.text-3xl.font-bold.text-tertiary').textContent = `${overall.quiz_accuracy}%`;
+        document.querySelector('.text-3xl.font-bold.text-on-surface').textContent = overall.total_study_time;
+        
+        // Load subjects progress
+        const subjectsContainer = document.getElementById('subjects-progress');
+        if (subjects.length === 0) {
+            subjectsContainer.innerHTML = '<p class="text-on-surface-variant text-sm">No subjects yet. Add subjects to track progress.</p>';
+        } else {
+            subjectsContainer.innerHTML = subjects.map(subject => `
+                <div>
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="font-medium text-on-surface">${subject.subject_name}</span>
+                        <span class="text-sm text-on-surface-variant">${subject.progress_percentage}%</span>
+                    </div>
+                    <div class="w-full bg-surface-container-highest rounded-full h-2">
+                        <div class="bg-primary h-2 rounded-full transition-all" style="width: ${subject.progress_percentage}%"></div>
+                    </div>
+                    <div class="text-xs text-on-surface-variant mt-1">
+                        ${subject.topics_mastered}/${subject.total_topics} topics mastered • ${subject.quiz_accuracy}% quiz accuracy
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        // Load weak topics
+        const weakTopicsContainer = document.getElementById('weak-topics');
+        if (weakTopics.length === 0) {
+            weakTopicsContainer.innerHTML = '<p class="text-on-surface-variant text-sm">No weak topics detected. Great job!</p>';
+        } else {
+            weakTopicsContainer.innerHTML = weakTopics.map(topic => `
+                <div class="p-4 bg-error-container/10 rounded-lg border border-error/20">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="font-medium text-on-surface">${topic.topic}</span>
+                        <span class="text-xs px-2 py-1 rounded-full ${topic.priority === 'high' ? 'bg-error text-white' : 'bg-warning text-white'}">
+                            ${topic.priority}
+                        </span>
+                    </div>
+                    <div class="text-sm text-on-surface-variant mb-1">${topic.reason}</div>
+                    <div class="text-xs text-on-surface-variant">${topic.accuracy}% accuracy across ${topic.attempts} attempts</div>
+                </div>
+            `).join('');
+        }
+    } catch (error) {
+        console.error('Error loading progress:', error);
+    }
+}
+
+loadProgress();
+</script>
+{% endblock %}

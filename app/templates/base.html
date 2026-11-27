@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}AI Learning Assistant{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com" rel="preconnect">
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@600;700&display=swap" rel="stylesheet">
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary": "#3525cd",
+                        "primary-container": "#4f46e5",
+                        "secondary": "#006c49",
+                        "secondary-container": "#6cf8bb",
+                        "background": "#f8f9ff",
+                        "surface": "#ffffff",
+                        "surface-variant": "#d3e4fe",
+                        "on-background": "#0b1c30",
+                        "on-surface": "#0b1c30",
+                        "on-surface-variant": "#464555",
+                        "on-primary": "#ffffff",
+                        "outline": "#777587",
+                        "error": "#ba1a1a",
+                    },
+                    "fontFamily": {
+                        "display": ["Outfit", "sans-serif"],
+                        "body": ["Inter", "sans-serif"],
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="/static/css/main.css?v=2">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        h1, h2, h3, h4, h5, h6 { font-family: 'Outfit', sans-serif; }
+        .ambient-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: -1;
+            background: radial-gradient(circle at 50% 0%, rgba(226, 223, 255, 0.4) 0%, transparent 60%),
+                        radial-gradient(circle at 100% 100%, rgba(108, 248, 187, 0.15) 0%, transparent 50%);
+            pointer-events: none;
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+
+<body class="bg-background text-on-background font-body antialiased">
+    <div class="ambient-bg"></div>
+    
+    {% block content %}{% endblock %}
+    
+    <script src="/static/js/main.js?v=4"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

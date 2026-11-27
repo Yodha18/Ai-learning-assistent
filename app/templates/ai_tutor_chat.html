@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Tutor - Online Chat</title>
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" href="/static/css/ai-tutor-chat.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@400;500;600;700&display=swap">
+    <style>
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f7fa;
+        }
+    </style>
+</head>
+<body>
+    <!-- Chat Container -->
+    <div class="chat-container">
+        <!-- Header -->
+        <div class="chat-header">
+            <div>
+                <h1>🤖 AI Tutor</h1>
+                <p style="margin: 5px 0 0 0; font-size: 12px; opacity: 0.9;">
+                    Personalized learning assistant
+                </p>
+            </div>
+            <div class="connection-status">
+                <div id="connection-status">● Connecting...</div>
+                <div id="active-users"></div>
+            </div>
+        </div>
+
+        <!-- Messages -->
+        <div id="chat-messages">
+            <div style="text-align: center; padding: 40px 20px; color: #999;">
+                <p>📝 Loading chat history...</p>
+            </div>
+        </div>
+
+        <!-- Input Area -->
+        <div class="chat-input-area">
+            <textarea 
+                id="message-input" 
+                placeholder="Ask me anything about your studies..."
+                rows="1"
+            ></textarea>
+            <button id="send-button">
+                <span class="material-symbols-outlined">send</span>
+                Send
+            </button>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="/static/js/ai-tutor-client.js"></script>
+    <script src="/static/js/ai-tutor-ui.js"></script>
+
+    <script>
+        // Configuration
+        const conversationId = new URLSearchParams(window.location.search).get('id') || 1;
+        const accessToken = document.querySelector('[data-token]')?.dataset.token || 
+                          localStorage.getItem('access_token') ||
+                          prompt('Enter your access token:');
+
+        if (!accessToken) {
+            alert('Access token required!');
+            window.location.href = '/login';
+        }
+
+        // Initialize Chat UI
+        const chat = new AITutorUI({
+            chatConfig: {
+                protocol: window.location.protocol === 'https:' ? 'wss' : 'ws',
+                host: window.location.host,
+                basePath: '/api/ai',
+                reconnectAttempts: 5,
+                reconnectDelay: 3000
+            }
+        });
+
+        // Connect to chat
+        console.log('Connecting to conversation', conversationId);
+        chat.connect(conversationId, accessToken);
+
+        // Event Listeners
+        const sendButton = document.getElementById('send-button');
+        const messageInput = document.getElementById('message-input');
+
+        // Send button click
+        sendButton.addEventListener('click', () => {
+            const content = messageInput.value.trim();
+            if (content) {
+                console.log('Sending message:', content);
+                chat.sendMessage(content);
+            }
+        });
+
+        // Enter to send (Shift+Enter for new line)
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                const content = messageInput.value.trim();
+                if (content) {
+                    chat.sendMessage(content);
+                }
+            }
+        });
+
+        // Typing indicator
+        let typingTimeout;
+        messageInput.addEventListener('input', () => {
+            chat.handleMessageInput();
+            clearTimeout(typingTimeout);
+            typingTimeout = setTimeout(() => {
+                chat.client.stopTyping();
+            }, 1000);
+        });
+
+        // Auto-resize textarea
+        messageInput.addEventListener('input', () => {
+            messageInput.style.height = 'auto';
+            messageInput.style.height = Math.min(messageInput.scrollHeight, 100) + 'px';
+        });
+
+        // Show connection status
+        setInterval(() => {
+            const status = chat.getStatus();
+            if (status.isConnected) {
+                document.getElementById('connection-status').textContent = '● Online';
+                document.getElementById('connection-status').className = 'connected';
+            } else {
+                document.getElementById('connection-status').textContent = `● Offline (${status.reconnectAttempts} retries)`;
+                document.getElementById('connection-status').className = 'disconnected';
+            }
+        }, 1000);
+
+        // Refresh active users periodically
+        setInterval(() => {
+            if (chat.client.isConnected) {
+                chat.client.getActiveUsers();
+            }
+        }, 5000);
+
+        // Handle page unload
+        window.addEventListener('beforeunload', () => {
+            chat.disconnect();
+        });
+
+        console.log('Chat initialized. Status:', chat.getStatus());
+    </script>
+</body>
+</html>

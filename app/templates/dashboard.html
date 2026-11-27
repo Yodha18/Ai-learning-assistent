@@ -1,0 +1,305 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Lumina Academic{% endblock %}
+
+{% block content %}
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-surface/80 backdrop-blur-md shadow-sm transition-all duration-300">
+    <div class="flex items-center justify-between px-6 py-4 max-w-7xl mx-auto h-[64px]">
+        <!-- Leading -->
+        <button class="flex items-center justify-center w-10 h-10 rounded-full hover:bg-surface-variant/50 transition-colors focus:outline-none focus:ring-2 focus:ring-primary">
+            <span class="material-symbols-outlined">menu</span>
+        </button>
+        <!-- Brand Logo -->
+        <div class="flex-1 flex justify-center">
+            <h1 class="font-display text-xl font-bold text-primary tracking-tight">Lumina Academic</h1>
+        </div>
+        <!-- Trailing -->
+        <div class="flex items-center gap-4">
+            <button class="relative flex items-center justify-center w-10 h-10 rounded-full text-on-surface-variant hover:bg-surface-variant/50 transition-colors focus:outline-none focus:ring-2 focus:ring-primary">
+                <span class="material-symbols-outlined">notifications</span>
+                <span id="notification-badge" class="absolute -top-1 -right-1 w-5 h-5 bg-error text-white text-xs rounded-full flex items-center justify-center hidden">0</span>
+            </button>
+            <a href="/profile" class="flex items-center gap-2 hover:bg-surface-variant/50 rounded-full px-3 py-1 transition-colors">
+                <div class="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center text-primary font-medium">
+                    {{ user.full_name[0] }}
+                </div>
+                <span class="text-sm font-medium hidden sm:block">{{ user.full_name }}</span>
+            </a>
+        </div>
+    </div>
+</header>
+
+<!-- Main Content -->
+<main class="max-w-7xl mx-auto px-4 md:px-6 pt-24 pb-16">
+    <!-- Welcome Section -->
+    <div class="mb-8">
+        <h2 class="font-display text-2xl font-bold text-on-background mb-2">Welcome back, {{ user.full_name }}!</h2>
+        <p class="text-on-surface-variant">{{ user.course }} - Semester {{ user.semester }}</p>
+    </div>
+
+    <!-- Progress Overview -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div class="bg-white rounded-xl p-6 shadow-sm border border-surface-variant">
+            <div class="flex items-center justify-between mb-4">
+                <span class="material-symbols-outlined text-primary text-2xl">trending_up</span>
+                <span class="text-sm text-on-surface-variant">Overall Progress</span>
+            </div>
+            <div class="text-3xl font-bold text-on-surface">{{ progress.overall_progress }}%</div>
+            <div class="text-sm text-on-surface-variant mt-1">{{ progress.topics_mastered }}/{{ progress.total_topics }} topics mastered</div>
+        </div>
+        <div class="bg-white rounded-xl p-6 shadow-sm border border-surface-variant">
+            <div class="flex items-center justify-between mb-4">
+                <span class="material-symbols-outlined text-secondary text-2xl">local_fire_department</span>
+                <span class="text-sm text-on-surface-variant">Study Streak</span>
+            </div>
+            <div class="text-3xl font-bold text-on-surface">{{ progress.study_streak }} days</div>
+            <div class="text-sm text-on-surface-variant mt-1">Keep it up!</div>
+        </div>
+        <div class="bg-white rounded-xl p-6 shadow-sm border border-surface-variant">
+            <div class="flex items-center justify-between mb-4">
+                <span class="material-symbols-outlined text-primary text-2xl">quiz</span>
+                <span class="text-sm text-on-surface-variant">Quiz Accuracy</span>
+            </div>
+            <div class="text-3xl font-bold text-on-surface">{{ progress.quiz_accuracy }}%</div>
+            <div class="text-sm text-on-surface-variant mt-1">{{ progress.total_study_time }} min studied</div>
+        </div>
+        <div class="bg-white rounded-xl p-6 shadow-sm border border-surface-variant">
+            <div class="flex items-center justify-between mb-4">
+                <span class="material-symbols-outlined text-tertiary text-2xl">school</span>
+                <span class="text-sm text-on-surface-variant">Subjects</span>
+            </div>
+            <div class="text-3xl font-bold text-on-surface">{{ progress.subjects_completed }}/{{ progress.total_subjects }}</div>
+            <div class="text-sm text-on-surface-variant mt-1">completed</div>
+        </div>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Left Column -->
+        <div class="lg:col-span-2 space-y-6">
+            <!-- Today's Study Plan -->
+            <div class="bg-white rounded-xl p-6 shadow-sm border border-surface-variant">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="font-display text-lg font-semibold text-on-surface">Today's Study Plan</h3>
+                    <button onclick="regeneratePlan()" class="text-sm text-primary hover:underline">Regenerate</button>
+                </div>
+                {% if study_plan %}
+                    <div class="space-y-3">
+                        {% for task in study_plan.tasks %}
+                        <div class="flex items-center gap-4 p-3 bg-surface-container-low rounded-lg">
+                            <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary flex-shrink-0">
+                                <span class="material-symbols-outlined">
+                                    {% if task.task_type == 'study' %}menu_book
+                                    {% elif task.task_type == 'quiz' %}quiz
+                                    {% elif task.task_type == 'revision' %}refresh
+                                    {% else %}task_alt
+                                    {% endif %}
+                                </span>
+                            </div>
+                            <div class="flex-1">
+                                <div class="font-medium text-on-surface">{{ task.topic or task.subject }}</div>
+                                <div class="text-sm text-on-surface-variant">{{ task.task_type.title() }} • {{ task.duration_minutes }} min</div>
+                            </div>
+                            <button onclick="completeTask({{ task.id }})" class="text-primary hover:text-primary-container transition-colors">
+                                <span class="material-symbols-outlined">check_circle</span>
+                            </button>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-8">
+                        <p class="text-on-surface-variant mb-4">No study plan for today</p>
+                        <button onclick="generatePlan()" class="bg-primary text-on-primary px-4 py-2 rounded-lg hover:bg-primary-container transition-colors">
+                            Generate Plan
+                        </button>
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Subject Progress -->
+            <div class="bg-white rounded-xl p-6 shadow-sm border border-surface-variant">
+                <h3 class="font-display text-lg font-semibold text-on-surface mb-4">Subject Progress</h3>
+                <div class="space-y-4">
+                    {% for subject in subjects_progress %}
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="font-medium text-on-surface">{{ subject.subject_name }}</span>
+                            <span class="text-sm text-on-surface-variant">{{ subject.progress_percentage }}%</span>
+                        </div>
+                        <div class="w-full bg-surface-container-highest rounded-full h-2">
+                            <div class="bg-primary h-2 rounded-full transition-all" style="width: {{ subject.progress_percentage }}%"></div>
+                        </div>
+                        <div class="text-xs text-on-surface-variant mt-1">{{ subject.topics_mastered }}/{{ subject.total_topics }} topics • {{ subject.quiz_accuracy }}% accuracy</div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column -->
+        <div class="space-y-6">
+            <!-- Weak Topics -->
+            <div class="bg-white rounded-xl p-6 shadow-sm border border-surface-variant">
+                <h3 class="font-display text-lg font-semibold text-on-surface mb-4">Topics to Improve</h3>
+                {% if weak_topics %}
+                    <div class="space-y-3">
+                        {% for topic in weak_topics %}
+                        <div class="p-3 bg-error-container/10 rounded-lg border border-error/20">
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="font-medium text-on-surface">{{ topic.topic }}</span>
+                                <span class="text-xs px-2 py-1 rounded-full {% if topic.priority == 'high' %}bg-error text-white{% else %}bg-warning text-white{% endif %}">
+                                    {{ topic.priority.title() }}
+                                </span>
+                            </div>
+                            <div class="text-sm text-on-surface-variant">{{ topic.accuracy }}% accuracy • {{ topic.attempts }} attempts</div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="text-on-surface-variant text-sm">No weak topics detected. Great job!</p>
+                {% endif %}
+            </div>
+
+            <!-- Recommendations -->
+            <div class="bg-white rounded-xl p-6 shadow-sm border border-surface-variant">
+                <h3 class="font-display text-lg font-semibold text-on-surface mb-4">Recommended for You</h3>
+                {% if recommendations %}
+                    <div class="space-y-3">
+                        {% for rec in recommendations %}
+                        <div class="p-3 bg-primary-container/10 rounded-lg">
+                            <div class="font-medium text-on-surface mb-1">{{ rec.topic }}</div>
+                            <div class="text-sm text-on-surface-variant mb-2">{{ rec.reason }}</div>
+                            <button class="text-sm text-primary hover:underline">{{ rec.recommended_action }}</button>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="text-on-surface-variant text-sm">No recommendations at the moment.</p>
+                {% endif %}
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="bg-white rounded-xl p-6 shadow-sm border border-surface-variant">
+                <h3 class="font-display text-lg font-semibold text-on-surface mb-4">Quick Actions</h3>
+                <div class="grid grid-cols-2 gap-3">
+                    <a href="/ai-tutor" class="flex flex-col items-center p-4 bg-surface-container-low rounded-lg hover:bg-surface-container transition-colors">
+                        <span class="material-symbols-outlined text-primary text-2xl mb-2">smart_toy</span>
+                        <span class="text-sm font-medium">Ask AI</span>
+                    </a>
+                    <a href="/materials" class="flex flex-col items-center p-4 bg-surface-container-low rounded-lg hover:bg-surface-container transition-colors">
+                        <span class="material-symbols-outlined text-primary text-2xl mb-2">upload_file</span>
+                        <span class="text-sm font-medium">Upload</span>
+                    </a>
+                    <a href="/quiz" class="flex flex-col items-center p-4 bg-surface-container-low rounded-lg hover:bg-surface-container transition-colors">
+                        <span class="material-symbols-outlined text-primary text-2xl mb-2">quiz</span>
+                        <span class="text-sm font-medium">Quiz</span>
+                    </a>
+                    <a href="/study-plan" class="flex flex-col items-center p-4 bg-surface-container-low rounded-lg hover:bg-surface-container transition-colors">
+                        <span class="material-symbols-outlined text-primary text-2xl mb-2">calendar_today</span>
+                        <span class="text-sm font-medium">Plan</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-2 bg-white dark:bg-surface-container-lowest shadow-[0px_-4px_20px_rgba(0,0,0,0.03)] rounded-t-xl md:hidden">
+    <a href="/dashboard" class="flex flex-col items-center justify-center text-primary font-bold bg-primary-container/10 rounded-xl px-3 py-1 hover:text-primary active:scale-90 transition-all duration-200">
+        <span class="material-symbols-outlined">dashboard</span>
+        <span class="text-xs mt-1">Dashboard</span>
+    </a>
+    <a href="/ai-tutor" class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary active:scale-90 transition-all duration-200">
+        <span class="material-symbols-outlined">smart_toy</span>
+        <span class="text-xs mt-1">Tutor</span>
+    </a>
+    <a href="/materials" class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary active:scale-90 transition-all duration-200">
+        <span class="material-symbols-outlined">book_5</span>
+        <span class="text-xs mt-1">Materials</span>
+    </a>
+    <a href="/quiz" class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary active:scale-90 transition-all duration-200">
+        <span class="material-symbols-outlined">quiz</span>
+        <span class="text-xs mt-1">Quiz</span>
+    </a>
+    <a href="/more" class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary active:scale-90 transition-all duration-200">
+        <span class="material-symbols-outlined">menu</span>
+        <span class="text-xs mt-1">More</span>
+    </a>
+</nav>
+
+<script>
+async function regeneratePlan() {
+    try {
+        const response = await fetch('/api/study-plan/generate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                daily_study_time: 120,
+                regenerate: true
+            })
+        });
+        if (response.ok) {
+            location.reload();
+        }
+    } catch (error) {
+        console.error('Error regenerating plan:', error);
+    }
+}
+
+async function generatePlan() {
+    try {
+        const response = await fetch('/api/study-plan/generate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                daily_study_time: 120,
+                regenerate: false
+            })
+        });
+        if (response.ok) {
+            location.reload();
+        }
+    } catch (error) {
+        console.error('Error generating plan:', error);
+    }
+}
+
+async function completeTask(taskId) {
+    try {
+        const response = await fetch(`/api/study-plan/tasks/${taskId}/complete`, {
+            method: 'POST'
+        });
+        if (response.ok) {
+            location.reload();
+        }
+    } catch (error) {
+        console.error('Error completing task:', error);
+    }
+}
+
+// Update notification badge
+async function updateNotificationBadge() {
+    try {
+        const response = await fetch('/api/notifications/unread-count');
+        const data = await response.json();
+        const badge = document.getElementById('notification-badge');
+        if (data.unread_count > 0) {
+            badge.textContent = data.unread_count;
+            badge.classList.remove('hidden');
+        } else {
+            badge.classList.add('hidden');
+        }
+    } catch (error) {
+        console.error('Error fetching notifications:', error);
+    }
+}
+
+updateNotificationBadge();
+</script>
+{% endblock %}

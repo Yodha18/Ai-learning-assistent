@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - Lumina Academic{% endblock %}
+
+{% block content %}
+<header class="fixed top-0 w-full z-50 bg-surface/80 backdrop-blur-md shadow-sm">
+    <div class="flex items-center justify-between px-6 py-4 max-w-7xl mx-auto h-[64px]">
+        <a href="/dashboard" class="flex items-center justify-center w-10 h-10 rounded-full hover:bg-surface-variant/50 transition-colors">
+            <span class="material-symbols-outlined">arrow_back</span>
+        </a>
+        <h1 class="font-display text-xl font-bold text-primary">Settings</h1>
+        <div class="w-10"></div>
+    </div>
+</header>
+
+<main class="max-w-2xl mx-auto px-4 pt-24 pb-16">
+    <div class="bg-white rounded-xl shadow-sm border border-surface-variant divide-y divide-surface-variant">
+        <div class="p-6">
+            <h2 class="font-display text-lg font-semibold text-on-surface mb-4">Account Settings</h2>
+            <div class="space-y-4">
+                <a href="/profile" class="flex items-center justify-between p-3 hover:bg-surface-container-low rounded-lg transition-colors">
+                    <div class="flex items-center gap-3">
+                        <span class="material-symbols-outlined text-primary">person</span>
+                        <span>Edit Profile</span>
+                    </div>
+                    <span class="material-symbols-outlined text-on-surface-variant">chevron_right</span>
+                </a>
+                <a href="#" class="flex items-center justify-between p-3 hover:bg-surface-container-low rounded-lg transition-colors">
+                    <div class="flex items-center gap-3">
+                        <span class="material-symbols-outlined text-primary">lock</span>
+                        <span>Change Password</span>
+                    </div>
+                    <span class="material-symbols-outlined text-on-surface-variant">chevron_right</span>
+                </a>
+            </div>
+        </div>
+
+        <div class="p-6">
+            <h2 class="font-display text-lg font-semibold text-on-surface mb-4">Preferences</h2>
+            <div class="space-y-4">
+                <div class="flex items-center justify-between p-3">
+                    <div class="flex items-center gap-3">
+                        <span class="material-symbols-outlined text-primary">notifications</span>
+                        <span>Push Notifications</span>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" class="sr-only peer" checked>
+                        <div class="w-11 h-6 bg-surface-container peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-surface-variant after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                    </label>
+                </div>
+                <div class="flex items-center justify-between p-3">
+                    <div class="flex items-center gap-3">
+                        <span class="material-symbols-outlined text-primary">dark_mode</span>
+                        <span>Dark Mode</span>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" class="sr-only peer">
+                        <div class="w-11 h-6 bg-surface-container peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-surface-variant after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div class="p-6">
+            <h2 class="font-display text-lg font-semibold text-on-surface mb-4">Data</h2>
+            <div class="space-y-4">
+                <button class="w-full flex items-center justify-between p-3 hover:bg-surface-container-low rounded-lg transition-colors text-left">
+                    <div class="flex items-center gap-3">
+                        <span class="material-symbols-outlined text-primary">download</span>
+                        <span>Export Data</span>
+                    </div>
+                    <span class="material-symbols-outlined text-on-surface-variant">chevron_right</span>
+                </button>
+                <button class="w-full flex items-center justify-between p-3 hover:bg-error-container/10 rounded-lg transition-colors text-left text-error">
+                    <div class="flex items-center gap-3">
+                        <span class="material-symbols-outlined">delete</span>
+                        <span>Delete Account</span>
+                    </div>
+                    <span class="material-symbols-outlined">chevron_right</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="p-6">
+            <h2 class="font-display text-lg font-semibold text-on-surface mb-4">About</h2>
+            <div class="space-y-2 text-sm text-on-surface-variant">
+                <p>Lumina Academic v1.0.0</p>
+                <p>AI-Powered Personal Learning Assistant</p>
+                <p>&copy; 2024 Lumina Academic</p>
+            </div>
+        </div>
+    </div>
+</main>
+{% endblock %}

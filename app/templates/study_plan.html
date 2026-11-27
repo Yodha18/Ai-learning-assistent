@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+
+{% block title %}Study Plan - Lumina Academic{% endblock %}
+
+{% block content %}
+<header class="fixed top-0 w-full z-50 bg-surface/80 backdrop-blur-md shadow-sm">
+    <div class="flex items-center justify-between px-6 py-4 max-w-7xl mx-auto h-[64px]">
+        <a href="/dashboard" class="flex items-center justify-center w-10 h-10 rounded-full hover:bg-surface-variant/50 transition-colors">
+            <span class="material-symbols-outlined">arrow_back</span>
+        </a>
+        <h1 class="font-display text-xl font-bold text-primary">Study Plan</h1>
+        <button onclick="regeneratePlan()" class="text-primary hover:underline">Regenerate</button>
+    </div>
+</header>
+
+<main class="max-w-4xl mx-auto px-4 pt-24 pb-16">
+    <div class="bg-white rounded-xl shadow-sm border border-surface-variant p-6">
+        <div class="flex items-center justify-between mb-6">
+            <div>
+                <h2 class="font-display text-xl font-semibold text-on-surface">Today's Study Plan</h2>
+                <p class="text-on-surface-variant text-sm">{{ study_plan.total_study_time }} minutes planned</p>
+            </div>
+            <div class="text-right">
+                <div class="text-2xl font-bold text-primary" id="completed-count">0</div>
+                <div class="text-sm text-on-surface-variant">Completed</div>
+            </div>
+        </div>
+
+        <div id="tasks-container" class="space-y-3">
+            {% if study_plan and study_plan.tasks %}
+                {% for task in study_plan.tasks %}
+                <div class="flex items-center gap-4 p-4 bg-surface-container-low rounded-lg {% if task.status == 'completed' %}opacity-60{% endif %}">
+                    <div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary flex-shrink-0">
+                        <span class="material-symbols-outlined">
+                            {% if task.task_type == 'study' %}menu_book
+                            {% elif task.task_type == 'quiz' %}quiz
+                            {% elif task.task_type == 'revision' %}refresh
+                            {% else %}task_alt
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="flex-1">
+                        <div class="font-medium text-on-surface">{{ task.topic or task.subject }}</div>
+                        <div class="text-sm text-on-surface-variant">{{ task.task_type.title() }} • {{ task.duration_minutes }} min</div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        {% if task.status == 'completed' %}
+                            <span class="text-secondary">✓ Done</span>
+                        {% elif task.status == 'skipped' %}
+                            <span class="text-on-surface-variant">Skipped</span>
+                        {% else %}
+                            <button onclick="completeTask({{ task.id }})" class="text-primary hover:text-primary-container transition-colors">
+                                <span class="material-symbols-outlined">check_circle</span>
+                            </button>
+                            <button onclick="skipTask({{ task.id }})" class="text-on-surface-variant hover:text-on-surface transition-colors">
+                                <span class="material-symbols-outlined">skip_next</span>
+                            </button>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="text-center py-8">
+                    <p class="text-on-surface-variant mb-4">No study plan for today</p>
+                    <button onclick="generatePlan()" class="bg-primary text-on-primary px-6 py-3 rounded-lg hover:bg-primary-container transition-colors">
+                        Generate Plan
+                    </button>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</main>
+
+<script>
+async function regeneratePlan() {
+    try {
+        const response = await fetch('/api/study-plan/generate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                daily_study_time: 120,
+                regenerate: true
+            })
+        });
+        if (response.ok) {
+            location.reload();
+        }
+    } catch (error) {
+        console.error('Error regenerating plan:', error);
+    }
+}
+
+async function generatePlan() {
+    try {
+        const response = await fetch('/api/study-plan/generate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                daily_study_time: 120,
+                regenerate: false
+            })
+        });
+        if (response.ok) {
+            location.reload();
+        }
+    } catch (error) {
+        console.error('Error generating plan:', error);
+    }
+}
+
+async function completeTask(taskId) {
+    try {
+        const response = await fetch(`/api/study-plan/tasks/${taskId}/complete`, {
+            method: 'POST'
+        });
+        if (response.ok) {
+            location.reload();
+        }
+    } catch (error) {
+        console.error('Error completing task:', error);
+    }
+}
+
+async function skipTask(taskId) {
+    try {
+        const response = await fetch(`/api/study-plan/tasks/${taskId}/skip`, {
+            method: 'POST'
+        });
+        if (response.ok) {
+            location.reload();
+        }
+    } catch (error) {
+        console.error('Error skipping task:', error);
+    }
+}
+
+// Update completed count
+document.addEventListener('DOMContentLoaded', function() {
+    const completedCount = document.querySelectorAll('[class*="opacity-60"]').length;
+    document.getElementById('completed-count').textContent = completedCount;
+});
+</script>
+{% endblock %}

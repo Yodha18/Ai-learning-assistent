@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+
+{% block title %}Profile - Lumina Academic{% endblock %}
+
+{% block content %}
+<header class="fixed top-0 w-full z-50 bg-surface/80 backdrop-blur-md shadow-sm">
+    <div class="flex items-center justify-between px-6 py-4 max-w-7xl mx-auto h-[64px]">
+        <a href="/dashboard" class="flex items-center justify-center w-10 h-10 rounded-full hover:bg-surface-variant/50 transition-colors">
+            <span class="material-symbols-outlined">arrow_back</span>
+        </a>
+        <h1 class="font-display text-xl font-bold text-primary">Profile</h1>
+        <div class="w-10"></div>
+    </div>
+</header>
+
+<main class="max-w-2xl mx-auto px-4 pt-24 pb-16">
+    <div class="bg-white rounded-xl shadow-sm border border-surface-variant p-6">
+        <div class="flex items-center gap-4 mb-6">
+            <div class="w-20 h-20 rounded-full bg-primary-container flex items-center justify-center text-primary text-2xl font-bold">
+                {{ user.full_name[0] }}
+            </div>
+            <div>
+                <h2 class="font-display text-xl font-semibold text-on-surface">{{ user.full_name }}</h2>
+                <p class="text-on-surface-variant">{{ user.email }}</p>
+                <p class="text-sm text-on-surface-variant">{{ user.course }} - Semester {{ user.semester }}</p>
+            </div>
+        </div>
+
+        <form id="profile-form" class="space-y-6">
+            <div>
+                <label class="block text-sm font-medium text-on-surface mb-1">Full Name</label>
+                <input type="text" name="full_name" value="{{ user.full_name }}" class="w-full px-3 py-2 border border-outline-variant rounded-lg focus:outline-none focus:border-primary">
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-on-surface mb-1">University</label>
+                <input type="text" name="university" value="{{ user.university or '' }}" class="w-full px-3 py-2 border border-outline-variant rounded-lg focus:outline-none focus:border-primary">
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-on-surface mb-1">Semester</label>
+                <select name="semester" class="w-full px-3 py-2 border border-outline-variant rounded-lg focus:outline-none focus:border-primary">
+                    <option value="">Select Semester</option>
+                    {% for i in range(1, 9) %}
+                    <option value="{{ i }}" {% if user.semester == i %}selected{% endif %}>Semester {{ i }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-on-surface mb-1">Daily Study Time (minutes)</label>
+                <input type="number" name="daily_study_time" value="{{ user.daily_study_time }}" min="30" max="360" class="w-full px-3 py-2 border border-outline-variant rounded-lg focus:outline-none focus:border-primary">
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-on-surface mb-1">Learning Goal</label>
+                <select name="learning_goal" class="w-full px-3 py-2 border border-outline-variant rounded-lg focus:outline-none focus:border-primary">
+                    <option value="exams" {% if user.learning_goal == 'exams' %}selected{% endif %}>Semester Exams</option>
+                    <option value="competitive_programming" {% if user.learning_goal == 'competitive_programming' %}selected{% endif %}>Competitive Programming</option>
+                    <option value="placements" {% if user.learning_goal == 'placements' %}selected{% endif %}>Placements</option>
+                    <option value="interview_prep" {% if user.learning_goal == 'interview_prep' %}selected{% endif %}>Interview Prep</option>
+                    <option value="general" {% if user.learning_goal == 'general' %}selected{% endif %}>General Learning</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-on-surface mb-1">Preferred Difficulty</label>
+                <select name="preferred_difficulty" class="w-full px-3 py-2 border border-outline-variant rounded-lg focus:outline-none focus:border-primary">
+                    <option value="easy" {% if user.preferred_difficulty == 'easy' %}selected{% endif %}>Easy</option>
+                    <option value="medium" {% if user.preferred_difficulty == 'medium' %}selected{% endif %}>Medium</option>
+                    <option value="hard" {% if user.preferred_difficulty == 'hard' %}selected{% endif %}>Hard</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-on-surface mb-1">Explanation Style</label>
+                <select name="explanation_style" class="w-full px-3 py-2 border border-outline-variant rounded-lg focus:outline-none focus:border-primary">
+                    <option value="simple" {% if user.explanation_style == 'simple' %}selected{% endif %}>Simple</option>
+                    <option value="detailed" {% if user.explanation_style == 'detailed' %}selected{% endif %}>Detailed</option>
+                    <option value="technical" {% if user.explanation_style == 'technical' %}selected{% endif %}>Technical</option>
+                    <option value="practical" {% if user.explanation_style == 'practical' %}selected{% endif %}>Practical</option>
+                </select>
+            </div>
+
+            <button type="submit" class="w-full bg-primary text-on-primary py-3 rounded-lg hover:bg-primary-container transition-colors">
+                Save Changes
+            </button>
+        </form>
+    </div>
+</main>
+
+<script>
+document.getElementById('profile-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const formData = new FormData(e.target);
+    const data = Object.fromEntries(formData.entries());
+    
+    // Convert numeric fields
+    if (data.semester) data.semester = parseInt(data.semester);
+    if (data.daily_study_time) data.daily_study_time = parseInt(data.daily_study_time);
+    
+    try {
+        const response = await fetch('/api/users/me', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        });
+        
+        if (response.ok) {
+            alert('Profile updated successfully!');
+            location.reload();
+        } else {
+            const error = await response.json();
+            alert(error.detail || 'Failed to update profile');
+        }
+    } catch (error) {
+        console.error('Error updating profile:', error);
+        alert('Failed to update profile. Please try again.');
+    }
+});
+</script>
+{% endblock %}

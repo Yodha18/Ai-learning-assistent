@@ -1,0 +1,482 @@
+{% extends "base.html" %}
+
+{% block title %}AI Tutor - Lumina Academic{% endblock %}
+
+{% block content %}
+<header class="fixed top-0 w-full z-50 bg-surface/80 backdrop-blur-md shadow-sm">
+    <div class="flex items-center justify-between px-6 py-4 max-w-7xl mx-auto h-[64px]">
+        <a href="/dashboard" class="flex items-center justify-center w-10 h-10 rounded-full hover:bg-surface-variant/50 transition-colors">
+            <span class="material-symbols-outlined">arrow_back</span>
+        </a>
+        <h1 class="font-display text-xl font-bold text-primary">AI Tutor</h1>
+        <div class="w-10"></div>
+    </div>
+</header>
+
+<main class="max-w-4xl mx-auto px-4 pt-24 pb-16">
+    <div class="bg-white rounded-xl shadow-sm border border-surface-variant overflow-hidden">
+        <!-- Chat Header -->
+        <div class="p-4 border-b border-surface-variant bg-surface-container-low">
+            <div class="flex items-center gap-3 justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center text-primary">
+                        <span class="material-symbols-outlined">smart_toy</span>
+                    </div>
+                    <div>
+                        <h2 class="font-semibold text-on-surface">AI Learning Assistant</h2>
+                        <p class="text-sm text-on-surface-variant">Ask questions about your study materials</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button id="new-chat-button" type="button" class="text-sm font-medium text-primary hover:underline">New chat</button>
+                    <div id="connection-status" class="flex items-center gap-2 px-3 py-1 rounded-full bg-surface-container-high">
+                        <div id="status-indicator" class="w-2 h-2 rounded-full bg-error animate-pulse"></div>
+                        <span id="status-text" class="text-xs font-medium text-on-surface-variant">Connecting...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chat Messages -->
+        <div id="chat-messages" class="h-[60vh] overflow-y-auto p-4 space-y-4">
+            <div id="welcome-message" class="flex items-start gap-3">
+                <div class="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center text-primary flex-shrink-0">
+                    <span class="material-symbols-outlined text-sm">smart_toy</span>
+                </div>
+                <div class="bg-surface-container-low rounded-lg p-3 max-w-[80%]">
+                    <p class="text-on-surface">Hi! I’m your personal AI assistant. Ask any question for a direct answer. Select a study file below when you want me to use it, or ask me to search the web.</p>
+                    <div class="mt-3 flex flex-wrap gap-2">
+                        <button type="button" class="suggestion-chip" data-prompt="Explain this in simple words.">Explain simply</button>
+                        <button type="button" class="suggestion-chip" data-prompt="Give me the key points.">Key points</button>
+                        <button type="button" class="suggestion-chip" data-prompt="Create a short study plan for this topic.">Study plan</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chat Input -->
+        <div class="p-4 border-t border-surface-variant">
+            <div class="mb-3 flex items-center gap-2">
+                <span class="material-symbols-outlined text-sm text-on-surface-variant">description</span>
+                <select id="document-selector" class="min-w-0 flex-1 bg-transparent text-sm text-on-surface-variant focus:outline-none">
+                    <option value="">Answer directly (no study file)</option>
+                </select>
+            </div>
+            <form id="chat-form" class="flex gap-3">
+                <input 
+                    type="text" 
+                    id="message-input" 
+                    placeholder="Ask a question about your materials..." 
+                    class="flex-1 px-4 py-3 bg-surface border border-outline-variant rounded-lg focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                    required
+                >
+                <button type="submit" class="bg-primary text-on-primary px-6 py-3 rounded-lg hover:bg-primary-container transition-colors flex items-center gap-2">
+                    <span class="material-symbols-outlined">send</span>
+                    Send
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Conversation History -->
+    <div class="mt-6">
+        <h3 class="font-display text-lg font-semibold text-on-surface mb-4">Recent Conversations</h3>
+        <div id="conversations-list" class="space-y-2">
+            <p class="text-on-surface-variant text-sm">No conversations yet. Start chatting!</p>
+        </div>
+    </div>
+</main>
+
+<script>
+let currentConversationId = null;
+let wsConnection = null;
+let isConnected = false;
+let reconnectAttempts = 0;
+const MAX_RECONNECT_ATTEMPTS = 5;
+const welcomeMarkup = document.getElementById('welcome-message').outerHTML;
+
+// Get access token from cookies
+function getAccessToken() {
+    const storedToken = localStorage.getItem('access_token');
+    if (storedToken) return storedToken;
+
+    const name = 'access_token=';
+    const decodedCookie = decodeURIComponent(document.cookie);
+    const cookieArray = decodedCookie.split(';');
+    for (let cookie of cookieArray) {
+        cookie = cookie.trim();
+        if (cookie.indexOf(name) === 0) {
+            return cookie.substring(name.length);
+        }
+    }
+    return null;
+}
+
+// Update connection status UI
+function updateConnectionStatus(connected, message) {
+    const statusIndicator = document.getElementById('status-indicator');
+    const statusText = document.getElementById('status-text');
+    
+    if (connected) {
+        statusIndicator.className = 'w-2 h-2 rounded-full bg-secondary animate-none';
+        statusText.textContent = 'Connected';
+        statusText.className = 'text-xs font-medium text-secondary';
+    } else {
+        statusIndicator.className = 'w-2 h-2 rounded-full bg-error animate-pulse';
+        statusText.textContent = message || 'Disconnected';
+        statusText.className = 'text-xs font-medium text-error';
+    }
+}
+
+function escapeHtml(value) {
+    const element = document.createElement('div');
+    element.textContent = value || '';
+    return element.innerHTML;
+}
+
+function parseSources(sources) {
+    if (!sources) return [];
+    if (Array.isArray(sources)) return sources;
+    try { return JSON.parse(sources); } catch { return []; }
+}
+
+function renderSources(sources) {
+    const items = parseSources(sources);
+    if (!items.length) return '';
+    const links = items.map((source) => {
+        const name = escapeHtml(source.document_name || source.title || 'Source');
+        return source.url
+            ? `<a class="block text-primary hover:underline" href="${escapeHtml(source.url)}" target="_blank" rel="noopener noreferrer">${name} ↗</a>`
+            : `<span class="block">${name}${source.page_number ? ` — page ${source.page_number}` : ''}</span>`;
+    }).join('');
+    return `<details class="mt-3 text-xs text-on-surface-variant"><summary class="cursor-pointer font-medium">Sources (${items.length})</summary><div class="mt-2 space-y-1">${links}</div></details>`;
+}
+
+function showWelcomeMessage() {
+    document.getElementById('welcome-message')?.classList.remove('hidden');
+}
+
+function bindSuggestionChips() {
+    document.querySelectorAll('.suggestion-chip').forEach((button) => {
+        button.addEventListener('click', () => {
+            const input = document.getElementById('message-input');
+            input.value = button.dataset.prompt;
+            input.focus();
+        });
+    });
+}
+
+// Establish WebSocket connection
+function connectWebSocket(conversationId) {
+    const token = getAccessToken();
+    if (!token) {
+        window.location.href = '/login';
+        return;
+    }
+    
+    if (wsConnection && wsConnection.readyState === WebSocket.OPEN) {
+        return;
+    }
+    
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const url = `${protocol}//${window.location.host}/api/ai/ws/chat/${conversationId}/${token}`;
+    
+    try {
+        wsConnection = new WebSocket(url);
+        
+        wsConnection.onopen = () => {
+            console.log('WebSocket connected');
+            isConnected = true;
+            reconnectAttempts = 0;
+            updateConnectionStatus(true, 'Connected');
+        };
+        
+        wsConnection.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                handleWebSocketMessage(data);
+            } catch (error) {
+                console.error('Error parsing message:', error);
+            }
+        };
+        
+        wsConnection.onerror = (error) => {
+            console.error('WebSocket error:', error);
+            isConnected = false;
+            updateConnectionStatus(false, 'Connection error');
+        };
+        
+        wsConnection.onclose = () => {
+            console.log('WebSocket closed');
+            isConnected = false;
+            updateConnectionStatus(false, 'Disconnected');
+            
+            // Auto-reconnect with exponential backoff
+            if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+                const delay = Math.pow(2, reconnectAttempts) * 1000;
+                reconnectAttempts++;
+                setTimeout(() => connectWebSocket(conversationId), delay);
+            }
+        };
+    } catch (error) {
+        console.error('WebSocket connection failed:', error);
+        isConnected = false;
+        updateConnectionStatus(false, 'Connection failed');
+    }
+}
+
+// Handle incoming WebSocket messages
+function handleWebSocketMessage(data) {
+    switch(data.type) {
+        case 'message':
+            addMessage(data.role || 'assistant', data.content, data.sources);
+            break;
+        case 'typing':
+            if (data.is_typing) {
+                showTypingIndicator(data.user_id);
+            } else {
+                hideTypingIndicator(data.user_id);
+            }
+            break;
+        case 'user_online':
+            console.log('User online:', data.user_id);
+            break;
+        case 'user_offline':
+            console.log('User offline:', data.user_id);
+            break;
+        case 'error':
+            addMessage('assistant', `Error: ${data.message}`);
+            break;
+    }
+}
+
+// Show typing indicator
+function showTypingIndicator(userId) {
+    let typingDiv = document.getElementById('typing-indicator');
+    if (!typingDiv) {
+        const messagesContainer = document.getElementById('chat-messages');
+        typingDiv = document.createElement('div');
+        typingDiv.id = 'typing-indicator';
+        typingDiv.className = 'flex items-start gap-3';
+        typingDiv.innerHTML = `
+            <div class="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center text-primary flex-shrink-0">
+                <span class="material-symbols-outlined text-sm">smart_toy</span>
+            </div>
+            <div class="bg-surface-container-low rounded-lg p-3">
+                <div class="flex gap-1">
+                    <div class="w-2 h-2 rounded-full bg-on-surface-variant animate-bounce"></div>
+                    <div class="w-2 h-2 rounded-full bg-on-surface-variant animate-bounce" style="animation-delay: 0.1s;"></div>
+                    <div class="w-2 h-2 rounded-full bg-on-surface-variant animate-bounce" style="animation-delay: 0.2s;"></div>
+                </div>
+            </div>
+        `;
+        messagesContainer.appendChild(typingDiv);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+}
+
+// Hide typing indicator
+function hideTypingIndicator() {
+    const typingDiv = document.getElementById('typing-indicator');
+    if (typingDiv) {
+        typingDiv.remove();
+    }
+}
+
+// Make authenticated API calls
+async function authenticatedFetch(url, options = {}) {
+    const token = getAccessToken();
+    
+    if (!token) {
+        window.location.href = '/login';
+        return null;
+    }
+    
+    const headers = {
+        ...options.headers,
+        'Authorization': `Bearer ${token}`
+    };
+    
+    const response = await fetch(url, { ...options, headers });
+    
+    if (response.status === 401) {
+        window.location.href = '/login';
+        return null;
+    }
+    
+    return response;
+}
+
+async function loadConversations() {
+    try {
+        const response = await authenticatedFetch('/api/ai/conversations');
+        if (!response) return;
+        
+        const conversations = await response.json();
+        
+        const listContainer = document.getElementById('conversations-list');
+        
+        if (!conversations || conversations.length === 0) {
+            listContainer.innerHTML = '<p class="text-on-surface-variant text-sm">No conversations yet. Start chatting!</p>';
+            return;
+        }
+        
+        listContainer.innerHTML = conversations.map(conv => `
+            <div class="bg-white rounded-lg p-4 border border-surface-variant hover:bg-surface-container-low transition-colors cursor-pointer" onclick="loadConversation(${conv.id})">
+                <div class="font-medium text-on-surface">${conv.title || 'New Conversation'}</div>
+                <div class="text-sm text-on-surface-variant">${new Date(conv.created_at).toLocaleDateString()}</div>
+            </div>
+        `).join('');
+    } catch (error) {
+        console.error('Error loading conversations:', error);
+    }
+}
+
+async function loadDocuments() {
+    const selector = document.getElementById('document-selector');
+    try {
+        const response = await authenticatedFetch('/api/documents/');
+        if (!response) return;
+        const documents = await response.json();
+        selector.innerHTML = '<option value="">Answer directly (no study file)</option>' +
+            documents.map((document) => `<option value="${document.id}">${escapeHtml(document.original_filename)}</option>`).join('');
+    } catch (error) {
+        console.error('Error loading documents:', error);
+    }
+}
+
+async function loadConversation(conversationId) {
+    try {
+        const response = await authenticatedFetch(`/api/ai/conversations/${conversationId}`);
+        if (!response) return;
+        
+        const conversation = await response.json();
+        
+        currentConversationId = conversationId;
+        
+        const messagesContainer = document.getElementById('chat-messages');
+        messagesContainer.innerHTML = conversation.messages.map(msg => `
+            <div class="flex items-start gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}">
+                <div class="w-8 h-8 rounded-full ${msg.role === 'user' ? 'bg-secondary-container text-secondary' : 'bg-primary-container text-primary'} flex items-center justify-center flex-shrink-0">
+                    <span class="material-symbols-outlined text-sm">${msg.role === 'user' ? 'person' : 'smart_toy'}</span>
+                </div>
+                <div class="${msg.role === 'user' ? 'bg-primary text-on-primary' : 'bg-surface-container-low text-on-surface'} rounded-lg p-3 max-w-[80%]">
+                    <p class="whitespace-pre-wrap">${escapeHtml(msg.content)}</p>
+                    ${renderSources(msg.sources)}
+                </div>
+            </div>
+        `).join('');
+        document.getElementById('welcome-message')?.classList.add('hidden');
+        
+        // Connect WebSocket for real-time updates
+        connectWebSocket(conversationId);
+        
+    } catch (error) {
+        console.error('Error loading conversation:', error);
+    }
+}
+
+async function sendMessage(message) {
+    document.getElementById('welcome-message')?.classList.add('hidden');
+    // Show typing indicator
+    showTypingIndicator('ai');
+    
+    // Try WebSocket first, fall back to REST
+    if (isConnected && wsConnection && wsConnection.readyState === WebSocket.OPEN) {
+        try {
+            wsConnection.send(JSON.stringify({
+                type: 'message',
+                content: message,
+                document_id: document.getElementById('document-selector').value || null
+            }));
+            addMessage('user', message);
+            return;
+        } catch (error) {
+            console.error('WebSocket send failed, using REST:', error);
+        }
+    }
+    
+    // Fall back to REST API
+    try {
+        const response = await authenticatedFetch('/api/ai/chat', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                message: message,
+                conversation_id: currentConversationId,
+                document_id: document.getElementById('document-selector').value || null
+            })
+        });
+        
+        if (!response) return;
+        
+        hideTypingIndicator();
+        
+        const data = await response.json();
+        currentConversationId = data.conversation_id;
+        
+        addMessage('user', message);
+        addMessage('assistant', data.answer, data.sources);
+        
+        loadConversations();
+        
+    } catch (error) {
+        console.error('Error sending message:', error);
+        hideTypingIndicator();
+        addMessage('assistant', 'Sorry, I encountered an error. Please try again.');
+    }
+}
+
+function addMessage(role, content, sources = null) {
+    hideTypingIndicator();
+    
+    const messagesContainer = document.getElementById('chat-messages');
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `flex items-start gap-3 ${role === 'user' ? 'flex-row-reverse' : ''}`;
+    
+    messageDiv.innerHTML = `
+        <div class="w-8 h-8 rounded-full ${role === 'user' ? 'bg-secondary-container text-secondary' : 'bg-primary-container text-primary'} flex items-center justify-center flex-shrink-0">
+            <span class="material-symbols-outlined text-sm">${role === 'user' ? 'person' : 'smart_toy'}</span>
+        </div>
+        <div class="${role === 'user' ? 'bg-primary text-on-primary' : 'bg-surface-container-low text-on-surface'} rounded-lg p-3 max-w-[80%]">
+            <p class="whitespace-pre-wrap">${escapeHtml(content)}</p>
+            ${renderSources(sources)}
+        </div>
+    `;
+    
+    messagesContainer.appendChild(messageDiv);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+function startNewChat() {
+    currentConversationId = null;
+    wsConnection?.close();
+    wsConnection = null;
+    isConnected = false;
+    document.getElementById('chat-messages').innerHTML = welcomeMarkup;
+    showWelcomeMessage();
+    bindSuggestionChips();
+    document.getElementById('message-input').focus();
+}
+
+document.getElementById('chat-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const input = document.getElementById('message-input');
+    const message = input.value.trim();
+    
+    if (message) {
+        input.value = '';
+        await sendMessage(message);
+    }
+});
+
+document.getElementById('new-chat-button').addEventListener('click', startNewChat);
+
+// Load conversations on page load
+loadConversations();
+loadDocuments();
+bindSuggestionChips();
+</script>
+{% endblock %}

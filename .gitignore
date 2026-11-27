@@ -1,0 +1,17 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.venv/
+.venv-local/
+venv/
+.env
+*.db
+test.db
+*.log
+server-output.log
+server-error.log
+server.log
+uploads/
+vector_store/
+!uploads/.gitkeep

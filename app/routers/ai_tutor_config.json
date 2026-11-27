@@ -1,0 +1,14 @@
+{
+  "default_profile": "default",
+  "profiles": {
+    "default": {
+      "system_behavior": "Be concise and conversational. Answer only what the user asked, without unsolicited suggestions or follow-up questions."
+    },
+    "technical": {
+      "system_behavior": "Use precise terminology, state assumptions, and include implementation details when useful."
+    },
+    "concise": {
+      "system_behavior": "Keep the answer brief and direct. Do not offer to expand unless asked."
+    }
+  }
+}
